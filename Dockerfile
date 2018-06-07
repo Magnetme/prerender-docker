@@ -1,25 +1,45 @@
-FROM node:8.9
+FROM zenika/alpine-node:latest
 MAINTAINER Magnet.me
+
+# Update apk repositories
+RUN echo "http://dl-2.alpinelinux.org/alpine/edge/main" > /etc/apk/repositories
+RUN echo "http://dl-2.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+RUN echo "http://dl-2.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+
+# Install chromium
+RUN apk -U --no-cache \
+	--allow-untrusted add \
+    zlib-dev \
+    chromium \
+    xvfb \
+    wait4ports \
+    xorg-server \
+    dbus \
+    ttf-freefont \
+    mesa-dri-swrast \
+    grep \
+    udev \
+    yarn \
+    dumb-init \
+    && apk del --purge --force linux-headers binutils-gold gnupg zlib-dev libc-utils \
+    && rm -rf /var/lib/apt/lists/* \
+    /var/cache/apk/* \
+    /usr/share/man \
+    /tmp/* \
+    /usr/lib/node_modules/npm/man \
+    /usr/lib/node_modules/npm/doc \
+    /usr/lib/node_modules/npm/html \
+    /usr/lib/node_modules/npm/scripts
+
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_PATH=/usr/lib/chromium/
 
 EXPOSE 3000
 
-# Install dumb-init to rape any Chrome zombies
-RUN wget https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb
-RUN dpkg -i dumb-init_*.deb
-
-# Install Chromium.
-RUN \
-  wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-  echo "deb http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list && \
-  apt-get update && \
-  apt-get install -y google-chrome-stable && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/*
-RUN google-chrome-stable --no-sandbox --version > /opt/chromeVersion
+RUN chromium-browser --no-sandbox --version > /opt/chromeVersion
 
 RUN mkdir -p /usr/src/app
-RUN groupadd -r prerender && useradd -r -g prerender -d /usr/src/app prerender
-RUN chown prerender:prerender /usr/src/app
+RUN adduser -D prerender && chown -R prerender:prerender /usr/src/app
 
 USER prerender
 WORKDIR /usr/src/app
